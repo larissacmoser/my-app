@@ -16,6 +16,7 @@ import { NoteType } from "../types";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   deleteNote,
+  selectNoteById,
   selectNotes,
   updateNote,
 } from "../store/modules/NotesSlice";
@@ -32,10 +33,12 @@ const FormNote: React.FC<FormNoteProps> = ({ action }) => {
   const inputDescription = useRef<HTMLInputElement | undefined>();
   const [detailing, setDetailing] = useState<string>("");
   const [openEdit, setOpenEdit] = useState<boolean>(false);
+
   const [newDescription, setNewDescription] = useState<string>("");
   const [newDetailing, setNewDetailing] = useState<string>("");
   let userlogged = JSON.parse(localStorage.getItem("userlogged") || "");
   let users = JSON.parse(localStorage.getItem("users") || "[]");
+  const [getId, setGetId] = useState<number>(0);
 
   const handleClose = () => {
     setOpenEdit(false);
@@ -75,30 +78,41 @@ const FormNote: React.FC<FormNoteProps> = ({ action }) => {
     });
     localStorage.setItem("users", JSON.stringify(users));
   };
-  const handleEditNote = useCallback((note: any) => {
+  const handleEditNote = (note: any) => {
     dispatch(
       updateNote({
-        id: note.id,
+        id: note.getId,
         changes: {
-          description: `${note.newDescription}`,
-          detailing: `${note.newDetailing}`,
+          description: note.newDescription,
+          detailing: note.newDetailing,
         },
       })
     );
-    setOpenEdit(true);
-
+    setOpenEdit(false);
     users = JSON.parse(localStorage.getItem("users") || "[]");
     let indexUserLogged = users.findIndex((user: any) => {
       return user.email == userlogged;
     });
-    const selectedNote = users[indexUserLogged].notes.filter((value: any) => {
-      return value.id === note.id;
+
+    const indexNote = users[indexUserLogged].notes.findIndex((note: any) => {
+      return note.id === getId;
     });
-    selectedNote.forEach((note: any) => {
-      let noteDescrip = note.description;
-      return noteDescrip;
-    });
-  }, []);
+
+    const noteSelected = users[indexUserLogged].notes[indexNote];
+
+    noteSelected.description = newDescription;
+    noteSelected.detailing = newDetailing;
+
+    localStorage.setItem("users", JSON.stringify(users));
+  };
+
+  const setOpenModal = (item: any) => {
+    setNewDescription(item.description);
+    setNewDetailing(item.detailing);
+    setGetId(item.id);
+
+    setOpenEdit(true);
+  };
 
   return (
     <React.Fragment>
@@ -142,7 +156,7 @@ const FormNote: React.FC<FormNoteProps> = ({ action }) => {
               key={item.id}
               note={item}
               actionDelete={() => handleDeleteNote(item)}
-              actionEdit={() => handleEditNote(item)}
+              actionEdit={() => setOpenModal(item)}
             />
           );
         })}
@@ -161,9 +175,7 @@ const FormNote: React.FC<FormNoteProps> = ({ action }) => {
               type="text"
               fullWidth
               variant="outlined"
-              value={() => {
-                handleEditNote({ description, detailing });
-              }}
+              value={newDescription || ""}
               onChange={(ev) => setNewDescription(ev.target.value)}
             />
             <TextField
@@ -174,6 +186,7 @@ const FormNote: React.FC<FormNoteProps> = ({ action }) => {
               type="text"
               fullWidth
               variant="outlined"
+              value={newDetailing || ""}
               onChange={(ev) => setNewDetailing(ev.target.value)}
             />
           </DialogContent>
@@ -181,7 +194,12 @@ const FormNote: React.FC<FormNoteProps> = ({ action }) => {
             <Button variant="outlined" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button variant="contained" onClick={handleEditNote}>
+            <Button
+              variant="contained"
+              onClick={() => {
+                handleEditNote({ getId, newDescription, newDetailing });
+              }}
+            >
               Salvar
             </Button>
           </DialogActions>
